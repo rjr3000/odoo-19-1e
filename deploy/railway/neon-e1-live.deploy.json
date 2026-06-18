@@ -49,7 +49,7 @@
   },
   "notes": {
     "deploy_authority": "Git push to rjr3000/odoo-19-1e master triggers Railway Dockerfile build.",
-    "enterprise": "Baked from build-context/enterprise-addons.zip (Git LFS) — same as odoo-19-images/odoo-19-e1.",
+    "enterprise": "FROM evoluzion26/odoo-19-e1:latest — EE baked in factory image at /opt/odoo/enterprise.",
     "database": "Neon project odoo-19-e1, database odoo-19-e1 on branch main."
   }
 }

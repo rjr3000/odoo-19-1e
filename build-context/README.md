@@ -1,18 +1,7 @@
-# Enterprise zip (baked into Docker image)
+# Railway deploy Dockerfile
 
-`build-context/enterprise-addons.zip` is copied into the image at build time and unpacked to `/opt/odoo/enterprise`. **No release URL. No runtime fetch.**
+Extends **`evoluzion26/odoo-19-e1:latest`** — enterprise is already baked at `/opt/odoo/enterprise` in the factory image.
 
-Refresh from a sibling repo:
+No `enterprise-addons.zip` in this repo. No release URL. No build-time fetch.
 
-```bash
-cp ../odoo-monolith-1/app/odoo-src/odoo/addons-enterprise/enterprise-addons.zip build-context/
-# or: ../odoo-19-all/addons-enterprise/enterprise-addons.zip
-```
-
-Local Docker build (copies zip automatically):
-
-```bash
-bash build.sh
-```
-
-Railway builds from git — commit the zip via Git LFS after refresh.
+SSOT factory build: `odoo-19-images/odoo-19-e1/build.sh`
