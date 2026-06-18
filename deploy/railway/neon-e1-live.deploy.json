@@ -1,0 +1,57 @@
+{
+  "$schema": "railway-neon-e1-live/v1",
+  "profile": "odoo-19-1e-neon-live",
+  "description": "Railway odoo-19-2 live: git repo rjr3000/odoo-19-1e Dockerfile build + Neon database odoo-19-e1.",
+  "reference": {
+    "project": "odoo-19-2",
+    "project_id": "2a51ef71-b79e-4492-ac8c-c7aaef65c342",
+    "environment": "live",
+    "environment_id": "c5867796-c797-4bc9-8735-6171cca0e862",
+    "service": "odoo-19-1e",
+    "service_id": "29a4ca07-41aa-47e3-9985-7b7dc90db687"
+  },
+  "git": {
+    "repo": "rjr3000/odoo-19-1e",
+    "branch": "master",
+    "railway_config_file": "/railway.json",
+    "dockerfile": "build-context/Dockerfile",
+    "builder": "DOCKERFILE"
+  },
+  "neon": {
+    "project_id": "old-fire-25624020",
+    "project_name": "odoo-19-e1",
+    "branch_id": "br-withered-scene-a6vicuxr",
+    "branch_name": "main",
+    "database_name": "odoo-19-e1",
+    "role": "neondb_owner"
+  },
+  "networking": {
+    "odoo_target_port": 8069
+  },
+  "deploy": {
+    "startCommand": "/bin/bash -lc 'set -e; host=\"${ODOO_DATABASE_HOST}\"; port=\"${ODOO_DATABASE_PORT:-5432}\"; echo \"Waiting for Postgres at ${host}:${port}...\"; until (echo >\"/dev/tcp/${host}/${port}\") 2>/dev/null; do sleep 1; done; echo \"Postgres is ready\"; addons=\"\"; if [[ -n \"${ODOO_ADDONS_PATH:-}\" ]]; then addons=\" --addons-path=${ODOO_ADDONS_PATH}\"; fi; exec odoo --http-port=\"${PORT:-8069}\" --init=all --without-demo=True --proxy-mode --db_host=\"${ODOO_DATABASE_HOST}\" --db_port=\"${ODOO_DATABASE_PORT:-5432}\" --db_user=\"${ODOO_DATABASE_USER}\" --db_password=\"${ODOO_DATABASE_PASSWORD}\" --database=\"${ODOO_DATABASE_NAME}\" --db_sslmode=require --smtp=\"${ODOO_SMTP_HOST}\" --smtp-port=\"${ODOO_SMTP_PORT_NUMBER}\" --smtp-user=\"${ODOO_SMTP_USER}\" --smtp-password=\"${ODOO_SMTP_PASSWORD}\" --email-from=\"${ODOO_EMAIL_FROM}\"${addons}'",
+    "healthcheckPath": "/web/health",
+    "healthcheckTimeout": 600,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10
+  },
+  "variables": {
+    "TZ": "America/New_York",
+    "PORT": "8069",
+    "HOME": "/var/lib/odoo",
+    "RAILWAY_RUN_UID": "0",
+    "PGSSLMODE": "require",
+    "ODOO_ADDONS_PATH": "/usr/lib/python3/dist-packages/odoo/addons,/opt/odoo/enterprise,/mnt/extra-addons",
+    "ENTERPRISE_ZIP_URL": "https://github.com/rjr3000/odoo-19-all/releases/download/enterprise-latest/enterprise-addons.zip",
+    "NEON_PROJECT_ID": "old-fire-25624020",
+    "NEON_PARENT_BRANCH": "main"
+  },
+  "build_variables": {
+    "GH_ADDONS_TOKEN": "<from-y_secrets-GITHUB_TOKEN>",
+    "ENTERPRISE_ZIP_URL": "https://github.com/rjr3000/odoo-19-all/releases/download/enterprise-latest/enterprise-addons.zip"
+  },
+  "notes": {
+    "deploy_authority": "Git push to rjr3000/odoo-19-1e master triggers Railway Dockerfile build.",
+    "database": "Neon project odoo-19-e1, database odoo-19-e1 on branch main."
+  }
+}
