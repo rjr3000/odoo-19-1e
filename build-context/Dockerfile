@@ -22,9 +22,12 @@ COPY unpack-enterprise-overlay.sh /usr/local/bin/unpack-enterprise-overlay.sh
 
 RUN chmod +x /usr/local/bin/unpack-enterprise-overlay.sh \
  && set -e \
- && auth="" \
- && if [ -n "$GH_ADDONS_TOKEN" ]; then auth="-H Authorization: Bearer ${GH_ADDONS_TOKEN}"; fi \
- && curl -fsSL ${auth} -o /tmp/enterprise-addons.zip "$ENTERPRISE_ZIP_URL" \
+ && if [ -n "$GH_ADDONS_TOKEN" ]; then \
+      curl -fsSL -H "Authorization: Bearer ${GH_ADDONS_TOKEN}" \
+        -o /tmp/enterprise-addons.zip "$ENTERPRISE_ZIP_URL"; \
+    else \
+      curl -fsSL -o /tmp/enterprise-addons.zip "$ENTERPRISE_ZIP_URL"; \
+    fi \
  && ODOO_PATH_ENTERPRISE=/opt/odoo/enterprise ENTERPRISE_ZIP_PATH=/tmp/enterprise-addons.zip \
     /usr/local/bin/unpack-enterprise-overlay.sh \
  && rm -f /tmp/enterprise-addons.zip \
