@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Apply neon-e1-live.deploy.json: git rjr3000/odoo-19-1e + Neon odoo-19-e1 on Railway live."""
+"""Apply neon-e1-live.deploy.json — fresh, no stock-template vars."""
 from __future__ import annotations
 
 import importlib.util
@@ -20,6 +20,30 @@ RT_PATH = (
     / "railway_template.py"
 )
 NEON_API = "https://console.neon.tech/api/v2"
+
+PURGE_VARS = (
+    "ODOO_DATABASE_HOST",
+    "ODOO_DATABASE_PORT",
+    "ODOO_DATABASE_USER",
+    "ODOO_DATABASE_PASSWORD",
+    "ODOO_DATABASE_NAME",
+    "ODOO_ADDONS_PATH",
+    "ENTERPRISE_ZIP_URL",
+    "ENTERPRISE_MANIFEST_URL",
+    "GH_ADDONS_TOKEN",
+    "ENTERPRISE_DELIVERY",
+    "ODOO_DB_INIT",
+    "ODOO_INIT_MODULES",
+    "ODOO_SMTP_HOST",
+    "ODOO_SMTP_PORT_NUMBER",
+    "ODOO_SMTP_USER",
+    "ODOO_SMTP_PASSWORD",
+    "ODOO_EMAIL_FROM",
+    "CONFIG_PROFILE",
+    "ODOO_DB",
+    "PGHOST",
+    "WEB_BASE_URL",
+)
 
 
 def load_rt():
@@ -42,189 +66,94 @@ def load_dotenv(path: Path) -> None:
         os.environ.setdefault(key.strip(), val.strip().strip("'").strip('"'))
 
 
-def neon_connection_uri(api_key: str, project_id: str, branch_id: str, database_name: str) -> str:
+def neon_uri(api_key: str, project_id: str, branch_id: str, database: str) -> str:
     import urllib.request
 
     url = (
         f"{NEON_API}/projects/{project_id}/connection_uri"
-        f"?branch_id={branch_id}&database_name={database_name}&role_name=neondb_owner&pooled=true"
+        f"?branch_id={branch_id}&database_name={database}&role_name=neondb_owner&pooled=true"
     )
     req = urllib.request.Request(
         url,
         headers={"Authorization": f"Bearer {api_key}", "Accept": "application/json"},
-        method="GET",
     )
     with urllib.request.urlopen(req, timeout=60) as resp:
         data = json.loads(resp.read().decode())
     uri = data.get("uri")
     if not uri:
-        raise SystemExit(f"Neon connection_uri missing for {database_name}")
+        raise SystemExit(f"No Neon URI for {database}")
     return uri
 
 
-def parse_neon_url(uri: str) -> dict[str, str]:
+def parse_neon(uri: str) -> dict[str, str]:
     p = urlparse(uri)
     return {
-        "ODOO_DATABASE_HOST": p.hostname or "",
-        "ODOO_DATABASE_PORT": str(p.port or 5432),
-        "ODOO_DATABASE_USER": unquote(p.username or ""),
-        "ODOO_DATABASE_PASSWORD": unquote(p.password or ""),
+        "PGHOST": p.hostname or "",
+        "PGPORT": str(p.port or 5432),
+        "PGUSER": unquote(p.username or ""),
+        "PGPASSWORD": unquote(p.password or ""),
     }
-
-
-def resolve_secrets() -> dict[str, str]:
-    smtp = (
-        os.environ.get("SMTP_PASSWORD")
-        or os.environ.get("MAIL_SHARED_PASSWORD")
-        or os.environ.get("SHARED_LOGIN_PASSWORD")
-        or os.environ.get("VS1_PASSWORD")
-        or os.environ.get("ACCOUNT_PASSWORD")
-        or ""
-    )
-    out: dict[str, str] = {}
-    if smtp:
-        out["ODOO_SMTP_PASSWORD"] = smtp
-        out["ODOO_SMTP_HOST"] = "mail.rg1.io"
-        out["ODOO_SMTP_PORT_NUMBER"] = "587"
-        out["ODOO_SMTP_USER"] = "admin@mvs.rg1.io"
-        out["ODOO_EMAIL_FROM"] = "admin@mvs.rg1.io"
-    return out
-
-
-FORBIDDEN_VARS = (
-    "ENTERPRISE_ZIP_URL",
-    "ENTERPRISE_MANIFEST_URL",
-    "GH_ADDONS_TOKEN",
-)
-
-
-def resolve_live_service_id(rt, manifest: dict) -> str:
-    ref = manifest["reference"]
-    project_id = ref["project_id"]
-    env_id = ref["environment_id"]
-    preferred = ref.get("service_id")
-    preferred_names = {ref.get("service"), "joyful-friendship", "odoo-19-1e", "Odoo"}
-
-    data = rt.gql(
-        """
-        query($pid: String!) {
-          project(id: $pid) {
-            environments { edges { node {
-              id name
-              serviceInstances { edges { node { serviceId serviceName } } }
-            } } }
-          }
-        }
-        """,
-        {"pid": project_id},
-    )
-    live_instances: list[dict] = []
-    for edge in data["project"]["environments"]["edges"]:
-        if edge["node"]["name"] == "live":
-            live_instances = [si["node"] for si in edge["node"]["serviceInstances"]["edges"]]
-            break
-
-    if preferred:
-        for inst in live_instances:
-            if inst["serviceId"] == preferred:
-                print(f"Using manifest live service {inst['serviceName']} ({inst['serviceId']})")
-                return inst["serviceId"]
-        print(f"Using manifest service id {preferred} (pending live instance)")
-        return preferred
-
-    for inst in live_instances:
-        if inst["serviceName"] in preferred_names:
-            print(f"Using existing live service {inst['serviceName']} ({inst['serviceId']})")
-            return inst["serviceId"]
-
-    raise SystemExit(f"No live odoo service found in {env_id}: {live_instances}")
 
 
 def main() -> None:
     load_dotenv(ROOT.parent / "agents-all" / "y_secrets" / "local.env")
-    manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
-    ref = manifest["reference"]
-    neon = manifest["neon"]
-    git = manifest["git"]
-    project_id = ref["project_id"]
-    env_id = ref["environment_id"]
-
+    m = json.loads(MANIFEST.read_text(encoding="utf-8"))
     neon_key = os.environ.get("NEON_API_KEY")
     if not neon_key:
-        raise SystemExit("NEON_API_KEY required in agents-all/y_secrets/local.env")
+        raise SystemExit("NEON_API_KEY required")
 
-    uri = neon_connection_uri(
+    uri = neon_uri(
         neon_key,
-        neon["project_id"],
-        neon["branch_id"],
-        neon["database_name"],
+        m["neon"]["project_id"],
+        m["neon"]["branch_id"],
+        m["neon"]["database_name"],
     )
-    neon_parts = parse_neon_url(uri)
+    vars_map = dict(m["variables"])
+    vars_map.update(parse_neon(uri))
 
     rt = load_rt()
-    os.environ["RAILWAY_PROJECT_ID"] = project_id
-    service_id = resolve_live_service_id(rt, manifest)
+    pid = m["reference"]["project_id"]
+    eid = m["reference"]["environment_id"]
+    sid = m["reference"]["service_id"]
+    os.environ["RAILWAY_PROJECT_ID"] = pid
 
-    vars_map = dict(manifest["variables"])
-    vars_map.update(neon_parts)
-    vars_map["ODOO_DATABASE_NAME"] = neon["database_name"]
-    vars_map.update(resolve_secrets())
-
-    print(f"Neon host={neon_parts['ODOO_DATABASE_HOST']} db={neon['database_name']}")
-    print(f"Git={git['repo']}@{git['branch']} dockerfile={git['dockerfile']}")
-
-    rt.upsert_variables(service_id, env_id, vars_map)
-    print(f"UPSERTED vars ({len(vars_map)}): {', '.join(sorted(vars_map.keys()))}")
-
-    for name in FORBIDDEN_VARS:
+    for name in PURGE_VARS:
         try:
             rt.gql(
-                """
-                mutation($input: VariableDeleteInput!) { variableDelete(input: $input) }
-                """,
+                "mutation($input: VariableDeleteInput!) { variableDelete(input: $input) }",
                 {
                     "input": {
-                        "projectId": project_id,
-                        "environmentId": env_id,
-                        "serviceId": service_id,
+                        "projectId": pid,
+                        "environmentId": eid,
+                        "serviceId": sid,
                         "name": name,
                         "skipDeploys": True,
                     }
                 },
             )
-            print(f"DELETED forbidden {name}")
+            print(f"purged {name}")
         except SystemExit:
             pass
 
-    deploy = manifest["deploy"]
-    try:
-        rt.gql(
-            """
-            mutation($id: String!, $input: ServiceConnectInput!) {
-              serviceConnect(id: $id, input: $input) { id name }
-            }
-            """,
-            {"id": service_id, "input": {"repo": git["repo"], "branch": git["branch"]}},
-        )
-        print(f"CONNECTED git {git['repo']}@{git['branch']}")
-    except SystemExit as exc:
-        print(f"WARN: git connect ({exc}) — continuing if already connected")
+    rt.upsert_variables(sid, eid, vars_map)
+    print(f"set official Odoo Docker vars: {', '.join(sorted(vars_map.keys()))}")
 
+    d = m["deploy"]
     rt.update_service_instance(
-        service_id,
-        env_id,
+        sid,
+        eid,
         {
-            "rootDirectory": git.get("root_directory", "build-context"),
-            "railwayConfigFile": git["railway_config_file"],
-            "startCommand": deploy["startCommand"],
-            "healthcheckPath": deploy.get("healthcheckPath"),
-            "healthcheckTimeout": deploy.get("healthcheckTimeout"),
+            "rootDirectory": m["git"]["root_directory"],
+            "railwayConfigFile": m["git"]["railway_config_file"],
+            "startCommand": d["startCommand"],
+            "healthcheckPath": d["healthcheckPath"],
+            "healthcheckTimeout": d["healthcheckTimeout"],
         },
     )
-    print("UPDATED rootDirectory + railway.json + startCommand + healthcheck (git Dockerfile build)")
+    print("updated service instance from neon-e1-live.deploy.json")
 
-    dep = rt.deploy_service(service_id, env_id)
-    print(f"DEPLOY workflow={dep}")
+    dep = rt.deploy_service(sid, eid)
+    print(f"deploy={dep}")
 
 
 if __name__ == "__main__":
