@@ -30,10 +30,15 @@ RUN mkdir -p /opt/odoo/enterprise \
     /mnt/extra-addons \
     && chown -R odoo:odoo /opt/odoo /mnt/extra-addons
 
-COPY enterprise-addons.zip /tmp/enterprise-addons.zip
+ARG GH_ADDONS_TOKEN=""
+ARG ENTERPRISE_ZIP_URL="https://github.com/rjr3000/odoo-19-all/releases/download/enterprise-latest/enterprise-addons.zip"
 COPY unpack-enterprise-overlay.sh /usr/local/bin/unpack-enterprise-overlay.sh
 
 RUN chmod +x /usr/local/bin/unpack-enterprise-overlay.sh \
+ && set -e \
+ && auth="" \
+ && if [ -n "$GH_ADDONS_TOKEN" ]; then auth="-H Authorization: Bearer ${GH_ADDONS_TOKEN}"; fi \
+ && curl -fsSL ${auth} -o /tmp/enterprise-addons.zip "$ENTERPRISE_ZIP_URL" \
  && ODOO_PATH_ENTERPRISE=/opt/odoo/enterprise ENTERPRISE_ZIP_PATH=/tmp/enterprise-addons.zip \
     /usr/local/bin/unpack-enterprise-overlay.sh \
  && rm -f /tmp/enterprise-addons.zip \

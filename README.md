@@ -51,27 +51,28 @@ Enterprise zip is resolved from (first match):
 - `../odoo-19-all/addons-enterprise/enterprise-addons.zip`
 - `../odoo-monolith-1/app/odoo-src/odoo/addons-enterprise/enterprise-addons.zip`
 
-## Railway deploy (factory-style)
+## Railway deploy — stock production template (NOT template 2)
 
-1. Create or use a Postgres service (`evoluzion26/odoo-19-db-1` recommended for production parity).
-2. Deploy this repo as a Docker service (see `railway.json`).
-3. Set required env vars (minimal):
+**SSOT:** `deploy/railway/stock-production.deploy.json`
 
-```
-RAILWAY_RUN_UID=0
-CONFIG_PROFILE=odoo-live
-ODOO_DB=<same as POSTGRES_DB>
-PGHOST=${{Postgres.RAILWAY_PRIVATE_DOMAIN}}
-HOST=${{Postgres.RAILWAY_PRIVATE_DOMAIN}}
-USER=odoo
-PASSWORD=<postgres password>
-ADDONS_GIT_REPO=rjr3000/odoo-19-all
-ADDONS_GIT_REF=main
-PORT=8069
-```
+Use this to attach **this repo** to an environment matching the sidebar template **Odoo 19** (same graph as project `odoo-19-2`) — **not** `odoo-19-live-2-template` / factory template 2.
 
-4. Mount volume at `/var/lib/odoo`.
-5. Set public domain **target port 8069**.
+| Item | Stock production | Factory template 2 (do not use here) |
+|------|------------------|--------------------------------------|
+| Postgres | `postgres-ssl:16` | `evoluzion26/odoo-19-db-1` |
+| Odoo source | Git → this repo | `evoluzion26/odoo-19-app-1` image |
+| DB env | `ODOO_DATABASE_*` | `ODOO_DB`, `PGHOST`, `HOST` |
+| Start | Stock `odoo` CLI + wait-for-Postgres | `/usr/local/bin/entrypoint-odoo-app.sh` |
+| Profile | none | `CONFIG_PROFILE=odoo-live` |
+
+**Quick steps:**
+
+1. Deploy from sidebar **Odoo 19** (or use existing `odoo-19-2`).
+2. Connect Odoo service to `rjr3000/odoo-19-1e` · Config file `/railway.json`.
+3. Paste vars from `deploy/railway/railway.variables.stock-production.env.example`.
+4. Volume `/var/lib/odoo` · target port **8069** · healthcheck `/web/health`.
+
+See `stock-production.deploy.json` for full service graph, forbidden factory vars, and step list.
 
 ## Baked vs runtime
 
