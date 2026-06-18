@@ -1,0 +1,7 @@
+; hosts/r2-live — odoo-app-1 runtime overrides
+; db_name and dbfilter are set at boot from ODOO_DB / ODOO_DBFILTER (entrypoint-odoo-app.sh)
+list_db = False
+db_port = 5432
+
+; Railway odoo-app-1 public domain targetPort 8080; optional bus domain 8072
+; include odoo-performance.snippet (same directory)

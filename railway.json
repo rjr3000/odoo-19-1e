@@ -1,0 +1,14 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "build-context/Dockerfile"
+  },
+  "deploy": {
+    "startCommand": "/usr/local/bin/entrypoint-odoo-app.sh",
+    "healthcheckPath": "/web/login",
+    "healthcheckTimeout": 600,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10
+  }
+}

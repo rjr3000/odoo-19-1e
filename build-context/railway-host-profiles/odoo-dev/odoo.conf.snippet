@@ -1,0 +1,12 @@
+; hosts/r2-dev — dev / PR (S10-odoo-dev-mode: xml,qweb for fast view/QWeb iteration)
+; db_name and dbfilter are set at boot from ODOO_DB / ODOO_DBFILTER (entrypoint-odoo-app.sh)
+list_db = False
+db_port = 5432
+
+dev_mode = reload,xml,qweb
+log_level = warn
+workers = 0
+max_cron_threads = 0
+gevent_port = 8072
+proxy_mode = True
+http_port = 8069

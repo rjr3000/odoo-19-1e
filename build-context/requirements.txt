@@ -1,0 +1,7 @@
+pdf2image==1.17.0
+google-auth>=2.0
+ddgs>=9.0
+google-genai>=1.0
+debugpy>=1.8
+ipython>=8.0
+click-odoo-contrib>=1.0

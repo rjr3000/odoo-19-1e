@@ -1,0 +1,5 @@
+build-context/enterprise-addons.zip
+addons-enterprise/enterprise-addons.zip
+*.tar.gz
+.env
+.DS_Store
