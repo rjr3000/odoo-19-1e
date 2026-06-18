@@ -81,7 +81,6 @@ def resolve_secrets() -> dict[str, str]:
         or os.environ.get("ACCOUNT_PASSWORD")
         or ""
     )
-    gh = os.environ.get("GH_ADDONS_TOKEN") or os.environ.get("GITHUB_TOKEN") or ""
     out: dict[str, str] = {}
     if smtp:
         out["ODOO_SMTP_PASSWORD"] = smtp
@@ -89,9 +88,14 @@ def resolve_secrets() -> dict[str, str]:
         out["ODOO_SMTP_PORT_NUMBER"] = "587"
         out["ODOO_SMTP_USER"] = "admin@mvs.rg1.io"
         out["ODOO_EMAIL_FROM"] = "admin@mvs.rg1.io"
-    if gh:
-        out["GH_ADDONS_TOKEN"] = gh
     return out
+
+
+FORBIDDEN_VARS = (
+    "ENTERPRISE_ZIP_URL",
+    "ENTERPRISE_MANIFEST_URL",
+    "GH_ADDONS_TOKEN",
+)
 
 
 def resolve_live_service_id(rt, manifest: dict) -> str:
@@ -165,15 +169,32 @@ def main() -> None:
     vars_map.update(neon_parts)
     vars_map["ODOO_DATABASE_NAME"] = neon["database_name"]
     vars_map.update(resolve_secrets())
-    for key, val in (manifest.get("build_variables") or {}).items():
-        if not str(val).startswith("<"):
-            vars_map.setdefault(key, val)
 
     print(f"Neon host={neon_parts['ODOO_DATABASE_HOST']} db={neon['database_name']}")
     print(f"Git={git['repo']}@{git['branch']} dockerfile={git['dockerfile']}")
 
     rt.upsert_variables(service_id, env_id, vars_map)
     print(f"UPSERTED vars ({len(vars_map)}): {', '.join(sorted(vars_map.keys()))}")
+
+    for name in FORBIDDEN_VARS:
+        try:
+            rt.gql(
+                """
+                mutation($input: VariableDeleteInput!) { variableDelete(input: $input) }
+                """,
+                {
+                    "input": {
+                        "projectId": project_id,
+                        "environmentId": env_id,
+                        "serviceId": service_id,
+                        "name": name,
+                        "skipDeploys": True,
+                    }
+                },
+            )
+            print(f"DELETED forbidden {name}")
+        except SystemExit:
+            pass
 
     deploy = manifest["deploy"]
     try:

@@ -44,16 +44,12 @@
     "PGSSLMODE": "require",
     "ODOO_ADDONS_PATH": "/usr/lib/python3/dist-packages/odoo/addons,/opt/odoo/enterprise,/mnt/extra-addons",
     "ENTERPRISE_DELIVERY": "baked",
-    "ENTERPRISE_ZIP_URL": "https://github.com/rjr3000/odoo-19-all/releases/download/enterprise-latest/enterprise-addons.zip",
     "NEON_PROJECT_ID": "old-fire-25624020",
     "NEON_PARENT_BRANCH": "main"
   },
-  "build_variables": {
-    "GH_ADDONS_TOKEN": "<from-y_secrets-GITHUB_TOKEN>",
-    "ENTERPRISE_ZIP_URL": "https://github.com/rjr3000/odoo-19-all/releases/download/enterprise-latest/enterprise-addons.zip"
-  },
   "notes": {
     "deploy_authority": "Git push to rjr3000/odoo-19-1e master triggers Railway Dockerfile build.",
+    "enterprise": "Baked from build-context/enterprise-addons.zip (Git LFS) — same as odoo-19-images/odoo-19-e1.",
     "database": "Neon project odoo-19-e1, database odoo-19-e1 on branch main."
   }
 }
