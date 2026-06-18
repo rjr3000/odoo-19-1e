@@ -7,14 +7,15 @@
     "project_id": "2a51ef71-b79e-4492-ac8c-c7aaef65c342",
     "environment": "live",
     "environment_id": "c5867796-c797-4bc9-8735-6171cca0e862",
-    "service": "odoo-19-1e",
-    "service_id": "29a4ca07-41aa-47e3-9985-7b7dc90db687"
+    "service": "joyful-friendship",
+    "service_id": "44c86b74-78d9-4000-b386-a83f762d58c1"
   },
   "git": {
     "repo": "rjr3000/odoo-19-1e",
     "branch": "master",
     "railway_config_file": "/railway.json",
-    "dockerfile": "build-context/Dockerfile",
+    "dockerfile": "Dockerfile",
+    "root_directory": "build-context",
     "builder": "DOCKERFILE"
   },
   "neon": {
@@ -42,6 +43,7 @@
     "RAILWAY_RUN_UID": "0",
     "PGSSLMODE": "require",
     "ODOO_ADDONS_PATH": "/usr/lib/python3/dist-packages/odoo/addons,/opt/odoo/enterprise,/mnt/extra-addons",
+    "ENTERPRISE_DELIVERY": "baked",
     "ENTERPRISE_ZIP_URL": "https://github.com/rjr3000/odoo-19-all/releases/download/enterprise-latest/enterprise-addons.zip",
     "NEON_PROJECT_ID": "old-fire-25624020",
     "NEON_PARENT_BRANCH": "main"

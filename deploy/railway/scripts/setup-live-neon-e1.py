@@ -94,6 +94,48 @@ def resolve_secrets() -> dict[str, str]:
     return out
 
 
+def resolve_live_service_id(rt, manifest: dict) -> str:
+    ref = manifest["reference"]
+    project_id = ref["project_id"]
+    env_id = ref["environment_id"]
+    preferred = ref.get("service_id")
+    preferred_names = {ref.get("service"), "joyful-friendship", "odoo-19-1e", "Odoo"}
+
+    data = rt.gql(
+        """
+        query($pid: String!) {
+          project(id: $pid) {
+            environments { edges { node {
+              id name
+              serviceInstances { edges { node { serviceId serviceName } } }
+            } } }
+          }
+        }
+        """,
+        {"pid": project_id},
+    )
+    live_instances: list[dict] = []
+    for edge in data["project"]["environments"]["edges"]:
+        if edge["node"]["name"] == "live":
+            live_instances = [si["node"] for si in edge["node"]["serviceInstances"]["edges"]]
+            break
+
+    if preferred:
+        for inst in live_instances:
+            if inst["serviceId"] == preferred:
+                print(f"Using manifest live service {inst['serviceName']} ({inst['serviceId']})")
+                return inst["serviceId"]
+        print(f"Using manifest service id {preferred} (pending live instance)")
+        return preferred
+
+    for inst in live_instances:
+        if inst["serviceName"] in preferred_names:
+            print(f"Using existing live service {inst['serviceName']} ({inst['serviceId']})")
+            return inst["serviceId"]
+
+    raise SystemExit(f"No live odoo service found in {env_id}: {live_instances}")
+
+
 def main() -> None:
     load_dotenv(ROOT.parent / "agents-all" / "y_secrets" / "local.env")
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
@@ -102,7 +144,6 @@ def main() -> None:
     git = manifest["git"]
     project_id = ref["project_id"]
     env_id = ref["environment_id"]
-    service_id = ref["service_id"]
 
     neon_key = os.environ.get("NEON_API_KEY")
     if not neon_key:
@@ -118,6 +159,7 @@ def main() -> None:
 
     rt = load_rt()
     os.environ["RAILWAY_PROJECT_ID"] = project_id
+    service_id = resolve_live_service_id(rt, manifest)
 
     vars_map = dict(manifest["variables"])
     vars_map.update(neon_parts)
@@ -151,13 +193,14 @@ def main() -> None:
         service_id,
         env_id,
         {
+            "rootDirectory": git.get("root_directory", "build-context"),
             "railwayConfigFile": git["railway_config_file"],
             "startCommand": deploy["startCommand"],
             "healthcheckPath": deploy.get("healthcheckPath"),
             "healthcheckTimeout": deploy.get("healthcheckTimeout"),
         },
     )
-    print("UPDATED railway.json + startCommand + healthcheck (git Dockerfile build)")
+    print("UPDATED rootDirectory + railway.json + startCommand + healthcheck (git Dockerfile build)")
 
     dep = rt.deploy_service(service_id, env_id)
     print(f"DEPLOY workflow={dep}")
